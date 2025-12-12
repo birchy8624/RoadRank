@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { MapContainer, TileLayer, Polyline, Popup, useMapEvents, useMap, ZoomControl } from 'react-leaflet';
 import axios from 'axios';
 import RatingModal from './RatingModal';
@@ -186,18 +186,46 @@ function DrawingLayer({ drawing, onDraw }) {
   const [currentPath, setCurrentPath] = useState([]);
   const [isDrawing, setIsDrawing] = useState(false);
 
+  const snapToNearestRoad = useCallback(async (latlng) => {
+    try {
+      const { lat, lng } = latlng;
+      const response = await axios.get(
+        `https://router.project-osrm.org/nearest/v1/driving/${lng},${lat}.json`,
+        { timeout: 5000 },
+      );
+      const snappedLocation = response.data?.waypoints?.[0]?.location;
+
+      if (Array.isArray(snappedLocation) && snappedLocation.length === 2) {
+        return { lat: snappedLocation[1], lng: snappedLocation[0] };
+      }
+    } catch (error) {
+      console.error('Error snapping to road:', error);
+    }
+
+    return { lat: latlng.lat, lng: latlng.lng };
+  }, []);
+
+  const addSnappedPoint = useCallback(
+    async (latlng, replace = false) => {
+      const snappedPoint = await snapToNearestRoad(latlng);
+      setCurrentPath((prev) => {
+        const nextPoint = [snappedPoint.lat, snappedPoint.lng];
+        return replace ? [nextPoint] : [...prev, nextPoint];
+      });
+    },
+    [snapToNearestRoad],
+  );
+
   useMapEvents({
-    mousedown: (e) => {
+    mousedown: async (e) => {
       if (drawing) {
         setIsDrawing(true);
-        const newPoint = [e.latlng.lat, e.latlng.lng];
-        setCurrentPath([newPoint]);
+        await addSnappedPoint(e.latlng, true);
       }
     },
-    mousemove: (e) => {
+    mousemove: async (e) => {
       if (drawing && isDrawing) {
-        const newPoint = [e.latlng.lat, e.latlng.lng];
-        setCurrentPath((prev) => [...prev, newPoint]);
+        await addSnappedPoint(e.latlng);
       }
     },
     mouseup: () => {
