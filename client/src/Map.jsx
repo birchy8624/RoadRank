@@ -38,24 +38,32 @@ function DrawingLayer({ drawing, onDraw }) {
   const [currentPath, setCurrentPath] = useState([]);
   const [isDrawing, setIsDrawing] = useState(false);
   const pointerActiveRef = useRef(false);
+  const pathRef = useRef([]);
 
   const startDrawing = (latlng) => {
     const newPoint = [latlng.lat, latlng.lng];
     setIsDrawing(true);
+    pathRef.current = [newPoint];
     setCurrentPath([newPoint]);
   };
 
   const continueDrawing = (latlng) => {
     const newPoint = [latlng.lat, latlng.lng];
-    setCurrentPath((prev) => [...prev, newPoint]);
+    pathRef.current = [...pathRef.current, newPoint];
+    setCurrentPath(pathRef.current);
   };
 
-  const endDrawing = () => {
-    if (drawing && isDrawing) {
-      onDraw(currentPath);
-      setIsDrawing(false);
-      setCurrentPath([]);
-    }
+  const endDrawing = (latlng) => {
+    if (!drawing || !isDrawing) return;
+
+    const updatedPath = latlng
+      ? [...pathRef.current, [latlng.lat, latlng.lng]]
+      : [...pathRef.current];
+
+    pathRef.current = [];
+    setIsDrawing(false);
+    setCurrentPath([]);
+    onDraw(updatedPath);
   };
 
   useMapEvents({
@@ -69,8 +77,8 @@ function DrawingLayer({ drawing, onDraw }) {
         continueDrawing(e.latlng);
       }
     },
-    mouseup: () => {
-      endDrawing();
+    mouseup: (e) => {
+      endDrawing(e.latlng);
     },
     touchstart: (e) => {
       if (pointerActiveRef.current) return;
@@ -86,9 +94,9 @@ function DrawingLayer({ drawing, onDraw }) {
         continueDrawing(e.latlng);
       }
     },
-    touchend: () => {
+    touchend: (e) => {
       if (pointerActiveRef.current) return;
-      endDrawing();
+      endDrawing(e.latlng);
     },
     pointerdown: (e) => {
       if (drawing) {
@@ -103,9 +111,9 @@ function DrawingLayer({ drawing, onDraw }) {
         continueDrawing(e.latlng);
       }
     },
-    pointerup: () => {
+    pointerup: (e) => {
       pointerActiveRef.current = false;
-      endDrawing();
+      endDrawing(e.latlng);
     },
     pointercancel: () => {
       pointerActiveRef.current = false;
