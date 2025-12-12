@@ -14,6 +14,10 @@
   cursor: crosshair !important;
 }
 
+.map-container.drawing .leaflet-container {
+  touch-action: none;
+}
+
 .map-container .leaflet-pane .leaflet-tile {
   filter: grayscale(1) sepia(0.20) hue-rotate(110deg) saturate(1) brightness(0.95);
   transition: filter 0.3s ease;

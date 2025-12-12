@@ -37,6 +37,7 @@ function MapController({ drawing }) {
 function DrawingLayer({ drawing, onDraw }) {
   const [currentPath, setCurrentPath] = useState([]);
   const [isDrawing, setIsDrawing] = useState(false);
+  const pointerActiveRef = useRef(false);
 
   const startDrawing = (latlng) => {
     const newPoint = [latlng.lat, latlng.lng];
@@ -72,18 +73,42 @@ function DrawingLayer({ drawing, onDraw }) {
       endDrawing();
     },
     touchstart: (e) => {
+      if (pointerActiveRef.current) return;
       if (drawing) {
         e.originalEvent?.preventDefault();
         startDrawing(e.latlng);
       }
     },
     touchmove: (e) => {
+      if (pointerActiveRef.current) return;
       if (drawing && isDrawing) {
         e.originalEvent?.preventDefault();
         continueDrawing(e.latlng);
       }
     },
     touchend: () => {
+      if (pointerActiveRef.current) return;
+      endDrawing();
+    },
+    pointerdown: (e) => {
+      if (drawing) {
+        pointerActiveRef.current = true;
+        e.originalEvent?.preventDefault();
+        startDrawing(e.latlng);
+      }
+    },
+    pointermove: (e) => {
+      if (drawing && isDrawing) {
+        e.originalEvent?.preventDefault();
+        continueDrawing(e.latlng);
+      }
+    },
+    pointerup: () => {
+      pointerActiveRef.current = false;
+      endDrawing();
+    },
+    pointercancel: () => {
+      pointerActiveRef.current = false;
       endDrawing();
     },
   });
